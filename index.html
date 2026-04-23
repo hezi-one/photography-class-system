@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>摄影2501/02班 · 综合档案与数据分析（含宿舍/性别/楼栋筛选+饼图）</title>
+    <!-- Chart.js CDN for 饼状图 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f4f9fe;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            padding: 24px 20px;
+            color: #1e2f3e;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* 统计卡片 */
+        .stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 24px;
+            padding: 16px 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            flex: 1;
+            min-width: 150px;
+            border: 1px solid #e2edf7;
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: #5a6e8c;
+            margin-bottom: 8px;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a4c7a;
+            line-height: 1.2;
+        }
+
+        .stat-sub {
+            font-size: 13px;
+            color: #6c86a3;
+            margin-top: 6px;
+        }
+
+        /* 筛选栏 */
+        .filter-bar {
+            background: white;
+            border-radius: 28px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px 20px;
+            border: 1px solid #eef2f8;
+        }
+
+        .search-box {
+            flex: 2;
+            min-width: 200px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 18px;
+            font-size: 14px;
+            border: 1px solid #cfdfed;
+            border-radius: 40px;
+            outline: none;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            color: #2c3e66;
+            font-size: 14px;
+        }
+
+        select {
+            padding: 8px 16px;
+            border-radius: 40px;
+            border: 1px solid #cfdfed;
+            background: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .reset-btn {
+            background: #eef2fa;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+            color: #2c4c6e;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .result-info {
+            background: #e3f0f9;
+            border-radius: 40px;
+            padding: 6px 18px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* 饼图区域 */
+        .charts-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 24px;
+            padding: 18px 20px;
+            flex: 1;
+            min-width: 260px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e9edf2;
+        }
+        .chart-card h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f5a8e;
+            margin-bottom: 12px;
+            border-left: 4px solid #2c7da0;
+            padding-left: 14px;
+        }
+        canvas {
+            max-height: 260px;
+            width: 100%;
+        }
+
+        /* 表格区域 */
+        .table-wrapper {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+            border: 1px solid #e9edf2;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 1300px;
+        }
+
+        .data-table th {
+            background: #f8fbfe;
+            padding: 14px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #1f4e79;
+            border-bottom: 1px solid #dfe8f0;
+        }
+
+        .data-table td {
+            padding: 11px 8px;
+            border-bottom: 1px solid #eff3f9;
+            color: #1f2f40;
+        }
+
+        .data-table tr:hover td {
+            background-color: #fafeff;
+        }
+
+        .phone-link {
+            color: #1f6da9;
+            text-decoration: none;
+            font-family: monospace;
+            font-weight: 500;
+        }
+        .badge-class {
+            background: #e6f0fa;
+            color: #1e5a88;
+            padding: 3px 10px;
+            border-radius: 40px;
+            font-size: 12px;
+            display: inline-block;
+        }
+        .dorm-badge {
+            font-size: 12px;
+            background: #f2f6fc;
+            border-radius: 12px;
+            padding: 3px 8px;
+            white-space: nowrap;
+        }
+        .empty-row td {
+            text-align: center;
+            padding: 48px;
+            color: #6f8fbb;
+        }
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c86a3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div style="margin-bottom: 16px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h1 style="font-weight: 600; font-size: 1.8rem; color: #144d73;">📸 摄影2501 & 2502班 · 综合数据平台</h1>
+            <p style="color: #4b6f8e;">学籍·家长联络·宿舍分配 | 多维度筛选 + 动态分析图表</p>
+        </div>
+        <div style="background: #eef3fc; border-radius: 32px; padding: 6px 18px; font-size: 14px; color: #1f5a8e;">
+            🧑‍🏫 班主任：何汝鑫 13951910208
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+        <div class="stat-card"><h3>👨‍🎓 总学生数</h3><div class="stat-number" id="totalCount">0</div><div class="stat-sub">摄影2501+2502</div></div>
+        <div class="stat-card"><h3>📞 家长联系电话</h3><div class="stat-number" id="parentPhoneCount">0</div><div class="stat-sub">已登记人数</div></div>
+        <div class="stat-card"><h3>🏠 宿舍已分配</h3><div class="stat-number" id="dormCoverage">0</div><div class="stat-sub">覆盖/总数</div></div>
+        <div class="stat-card"><h3>👥 班级分布</h3><div class="stat-number" id="classStats">—</div><div class="stat-sub">2501 / 2502</div></div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="filter-bar">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 姓名/学号/电话/籍贯/宿舍号" autocomplete="off">
+        </div>
+        <div class="filter-group"><label>📌 班级</label><select id="classFilter"><option value="all">全部</option><option value="摄影2501">摄影2501</option><option value="摄影2502">摄影2502</option></select></div>
+        <div class="filter-group"><label>⚥ 性别</label><select id="genderFilter"><option value="all">全部</option><option value="男">男</option><option value="女">女</option></select></div>
+        <div class="filter-group"><label>🏢 楼栋</label><select id="buildingFilter"><option value="all">全部楼栋</option><option value="南3栋">南3栋</option><option value="南4栋">南4栋</option><option value="西7栋">西7栋</option></select></div>
+        <div class="filter-group"><label>🗺️ 省份</label><select id="provinceFilter"><option value="all">全部省份</option></select></div>
+        <div class="filter-group"><button class="reset-btn" id="resetBtn">⟳ 重置筛选</button></div>
+        <div class="result-info" id="resultInfo">加载中...</div>
+    </div>
+
+    <!-- 饼图卡片 -->
+    <div class="charts-row">
+        <div class="chart-card"><h3>📊 性别比例</h3><canvas id="genderChart" width="400" height="240" style="max-height:240px"></canvas></div>
+        <div class="chart-card"><h3>📍 籍贯省份分布 (前8+其他)</h3><canvas id="provinceChart" width="400" height="240" style="max-height:240px"></canvas></div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>序号</th><th>班级</th><th>学号</th><th>姓名</th><th>性别</th><th>📱 学生电话</th><th>👪 家长电话</th><th>籍贯</th><th>楼栋</th><th>宿舍号</th><th>床位</th><th>具体宿舍</th></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <footer>📌 数据基于最新学籍表&分班床位表 · 点击号码直接拨打 · 饼图随筛选动态更新（展示当前筛选结果）</footer>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 1. 家长联系电话表（完整，含王英铭等共53人）
+    // --------------------------------------------------------------
+    const contactData = [
+        {序号:1,班级:"摄影2502",学号:"202540404",姓名:"李佳隆",性别:"男",联系电话:"18920790012",家长联系电话:"18102131182",籍贯:"天津市天津城区"},
+        {序号:2,班级:"摄影2501",学号:"202540405",姓名:"贺泰康",性别:"男",联系电话:"15329200642",家长联系电话:"13985019438",籍贯:"贵州省贵阳市"},
+        {序号:3,班级:"摄影2501",学号:"202540406",姓名:"胡弈凡",性别:"男",联系电话:"19327482821",家长联系电话:"18576696199",籍贯:"湖南省永州市"},
+        {序号:4,班级:"摄影2501",学号:"202540407",姓名:"武天杰",性别:"男",联系电话:"19193822659",家长联系电话:"15101955180",籍贯:"甘肃省天水市"},
+        {序号:5,班级:"摄影2501",学号:"202540408",姓名:"段景尧",性别:"男",联系电话:"18544127627",家长联系电话:"13174431309",籍贯:"吉林长春"},
+        {序号:6,班级:"摄影2501",学号:"202540409",姓名:"蒋婉晴",性别:"女",联系电话:"15661376511",家长联系电话:"18686126511",籍贯:"河北省廊坊市"},
+        {序号:7,班级:"摄影2501",学号:"202540410",姓名:"罗佳妮",性别:"女",联系电话:"18147950306",家长联系电话:"13704723844",籍贯:"内蒙古包头市"},
+        {序号:8,班级:"摄影2501",学号:"202540411",姓名:"石玥",性别:"女",联系电话:"18148674342",家长联系电话:"17551653029",籍贯:"内蒙古包头市"},
+        {序号:9,班级:"摄影2502",学号:"202540412",姓名:"秦浩然",性别:"男",联系电话:"19272376739",家长联系电话:"15077130027",籍贯:"重庆市忠县"},
+        {序号:10,班级:"摄影2501",学号:"202540413",姓名:"邓子轩",性别:"男",联系电话:"19509210409",家长联系电话:"19945180233",籍贯:"湖北省荆州市"},
+        {序号:11,班级:"摄影2502",学号:"202540414",姓名:"向雨琪",性别:"女",联系电话:"18371867155",家长联系电话:"18727683851",籍贯:"湖北省恩施市"},
+        {序号:12,班级:"摄影2502",学号:"202540415",姓名:"倪振洲",性别:"男",联系电话:"19215008796",家长联系电话:"18262196586",籍贯:"江苏省淮安市"},
+        {序号:13,班级:"摄影2502",学号:"202540416",姓名:"潘晨",性别:"男",联系电话:"15312792269",家长联系电话:"17751643678",籍贯:"江苏省泰州市"},
+        {序号:14,班级:"摄影2501",学号:"202540417",姓名:"史彦平",性别:"男",联系电话:"18577998502",家长联系电话:"15295252488",籍贯:"江苏泰州"},
+        {序号:15,班级:"摄影2502",学号:"202540418",姓名:"陈诗韵",性别:"女",联系电话:"13538176059",家长联系电话:"13728773993",籍贯:"广东省深圳市"},
+        {序号:16,班级:"摄影2502",学号:"202540419",姓名:"林子皓",性别:"男",联系电话:"17704134666",家长联系电话:"17704134666",籍贯:"辽宁省抚顺市"},
+        {序号:17,班级:"摄影2501",学号:"202540420",姓名:"史雨博",性别:"男",联系电话:"15114263780",家长联系电话:"13842922405",籍贯:"辽宁省葫芦岛市"},
+        {序号:18,班级:"摄影2502",学号:"202540421",姓名:"孙明宇",性别:"男",联系电话:"15940986563",家长联系电话:"13942682416",籍贯:"辽宁省大连市"},
+        {序号:19,班级:"摄影2502",学号:"202540422",姓名:"杜怡乐",性别:"女",联系电话:"15660027572",家长联系电话:"13782058659",籍贯:"河南省南阳市"},
+        {序号:20,班级:"摄影2501",学号:"202540423",姓名:"葛梦琪",性别:"女",联系电话:"13353898611",家长联系电话:"13507668611",籍贯:"河南省上蔡县"},
+        {序号:21,班级:"摄影2502",学号:"202540424",姓名:"晋博豪",性别:"男",联系电话:"18603856573",家长联系电话:"15290813425",籍贯:"河南省郑州市"},
+        {序号:22,班级:"摄影2501",学号:"202540222",姓名:"王英铭",性别:"男",联系电话:"17725207008",家长联系电话:"15297023777",籍贯:"江苏省南京市"},
+        {序号:23,班级:"摄影2501",学号:"202540426",姓名:"王奕文",性别:"女",联系电话:"18639710166",家长联系电话:"13733606722",籍贯:"河南省许昌市"},
+        {序号:24,班级:"摄影2501",学号:"202540427",姓名:"吴姗姗",性别:"女",联系电话:"13295796775",家长联系电话:"13409299049",籍贯:"河南省南阳市"},
+        {序号:25,班级:"摄影2502",学号:"202540428",姓名:"张心豫",性别:"男",联系电话:"15639537521",家长联系电话:"18539556961",籍贯:"河南省郾城区"},
+        {序号:26,班级:"摄影2502",学号:"202540429",姓名:"张源",性别:"男",联系电话:"19303883037",家长联系电话:"18903820388",籍贯:"河南省郑州市"},
+        {序号:27,班级:"摄影2502",学号:"202540430",姓名:"朱辛帅",性别:"男",联系电话:"17560374279",家长联系电话:"13475893012",籍贯:"山东省聊城市"},
+        {序号:28,班级:"摄影2501",学号:"202540431",姓名:"杨艺",性别:"女",联系电话:"15630108349",家长联系电话:"18600355246",籍贯:"河北省石家庄市"},
+        {序号:29,班级:"摄影2501",学号:"202540432",姓名:"张雨欣",性别:"女",联系电话:"13180587313",家长联系电话:"15831928578",籍贯:"河北省石家庄"},
+        {序号:30,班级:"摄影2502",学号:"202540433",姓名:"凤心宇",性别:"女",联系电话:"19133670881",家长联系电话:"13600084592",籍贯:"广西壮柳州市"},
+        {序号:31,班级:"摄影2502",学号:"202540434",姓名:"韦俞合",性别:"男",联系电话:"17377281827",家长联系电话:"18077288853",籍贯:"广西来宾市"},
+        {序号:32,班级:"摄影2501",学号:"202540435",姓名:"陈浩阳",性别:"男",联系电话:"13648844261",家长联系电话:"15825264056",籍贯:"云南省昆明市"},
+        {序号:33,班级:"摄影2502",学号:"202540436",姓名:"吉庆彬",性别:"男",联系电话:"15288438647",家长联系电话:"13987109133",籍贯:"云南省昆明市"},
+        {序号:34,班级:"摄影2501",学号:"202540437",姓名:"穆扎帕尔·买买提",性别:"男",联系电话:"13899282972",家长联系电话:"15899375050",籍贯:"新疆阿克苏市温宿县"},
+        {序号:35,班级:"摄影2502",学号:"202540438",姓名:"邓明",性别:"男",联系电话:"13970109884",家长联系电话:"15297780697",籍贯:"江西省赣州市"},
+        {序号:36,班级:"摄影2502",学号:"202540439",姓名:"傅安欣",性别:"女",联系电话:"15279867211",家长联系电话:"15879583321",籍贯:"江西省宜春市"},
+        {序号:37,班级:"摄影2502",学号:"202540440",姓名:"万冰洁",性别:"女",联系电话:"15879155976",家长联系电话:"18807911067",籍贯:"江西省南昌市"},
+        {序号:38,班级:"摄影2502",学号:"202540441",姓名:"旦增木金",性别:"男",联系电话:"13099754492",家长联系电话:"13648997253",籍贯:"青海省海南藏族"},
+        {序号:39,班级:"摄影2501",学号:"202540442",姓名:"邓治宏",性别:"男",联系电话:"15309752006",家长联系电话:"18797201775",籍贯:"青海省海东市"},
+        {序号:40,班级:"摄影2502",学号:"202540443",姓名:"索南顿",性别:"男",联系电话:"18797386836",家长联系电话:"13909763736",籍贯:"青海省玉树藏族"},
+        {序号:41,班级:"摄影2501",学号:"202540444",姓名:"索南拉旦",性别:"男",联系电话:"18897003908",家长联系电话:"18897003908",籍贯:"青海省海北藏族"},
+        {序号:42,班级:"摄影2502",学号:"202540445",姓名:"吴亮维",性别:"男",联系电话:"18577998570",家长联系电话:"13965957118",籍贯:"安徽省滁州市"},
+        {序号:43,班级:"摄影2502",学号:"202540446",姓名:"杨晨",性别:"男",联系电话:"13501971974",家长联系电话:"13621779256",籍贯:"安徽省淮北市"},
+        {序号:44,班级:"摄影2501",学号:"202540447",姓名:"汪弘博",性别:"男",联系电话:"13720887880",家长联系电话:"13177512222",籍贯:"福建省厦门"},
+        {序号:45,班级:"摄影2502",学号:"202540448",姓名:"郑超",性别:"男",联系电话:"13950836689",家长联系电话:"13605910925",籍贯:"福建省龙岩市"},
+        {序号:46,班级:"摄影2501",学号:"202540449",姓名:"陈卓",性别:"男",联系电话:"15168769909",家长联系电话:"13958770789",籍贯:"浙江省温州市"},
+        {序号:47,班级:"摄影2502",学号:"202540450",姓名:"金柯语琦",性别:"女",联系电话:"19883659953",家长联系电话:"15757551828",籍贯:"浙江省台州市"},
+        {序号:48,班级:"摄影2501",学号:"202540451",姓名:"李时宇",性别:"男",联系电话:"15267367386",家长联系电话:"15825781848",籍贯:"浙江省义乌市"},
+        {序号:49,班级:"摄影2501",学号:"202540452",姓名:"钱欣逸",性别:"女",联系电话:"15505705301",家长联系电话:"18605708061",籍贯:"浙江省衢州市"},
+        {序号:50,班级:"摄影2501",学号:"202540453",姓名:"朱秦玮",性别:"男",联系电话:"13395786481",家长联系电话:"18767865885",籍贯:"浙江省丽水市"},
+        {序号:51,班级:"摄影2502",学号:"202540454",姓名:"何艳秋",性别:"女",联系电话:"18080981745",家长联系电话:"18180513396",籍贯:"四川省成都市"},
+        {序号:52,班级:"摄影2501",学号:"202540455",姓名:"梁梓豪",性别:"男",联系电话:"15700385742",家长联系电话:"15182562535",籍贯:"四川遂宁"},
+        {序号:53,班级:"摄影2501",学号:"202540456",姓名:"章学雅",性别:"女",联系电话:"19938630573",家长联系电话:"18090278166",籍贯:"四川省广安市"}
+    ];
+
+    // --------------------------------------------------------------
+    // 2. 新版宿舍数据 (依据“摄影 分班情况表(3)床位.xlsx” 共53条)
+    // --------------------------------------------------------------
+    const dormList = [
+        {姓名:"蒋婉晴",楼栋:"南3栋",宿舍号:"301-1",床位:"4",具体宿舍:"南3栋301-1-4"},
+        {姓名:"钱欣逸",楼栋:"南3栋",宿舍号:"301-1",床位:"5",具体宿舍:"南3栋301-1-5"},
+        {姓名:"王奕文",楼栋:"南3栋",宿舍号:"301-1",床位:"3",具体宿舍:"南3栋301-1-3"},
+        {姓名:"吴姗姗",楼栋:"南3栋",宿舍号:"301-1",床位:"1",具体宿舍:"南3栋301-1-1"},
+        {姓名:"章学雅",楼栋:"南3栋",宿舍号:"301-1",床位:"2",具体宿舍:"南3栋301-1-2"},
+        {姓名:"葛梦琪",楼栋:"南3栋",宿舍号:"301-2",床位:"1",具体宿舍:"南3栋301-2-1"},
+        {姓名:"罗佳妮",楼栋:"南3栋",宿舍号:"301-2",床位:"4",具体宿舍:"南3栋301-2-4"},
+        {姓名:"石玥",楼栋:"南3栋",宿舍号:"301-2",床位:"3",具体宿舍:"南3栋301-2-3"},
+        {姓名:"杨艺",楼栋:"南3栋",宿舍号:"301-2",床位:"2",具体宿舍:"南3栋301-2-2"},
+        {姓名:"张雨欣",楼栋:"南3栋",宿舍号:"301-2",床位:"5",具体宿舍:"南3栋301-2-5"},
+        {姓名:"段景尧",楼栋:"南4栋",宿舍号:"702-4",床位:"3",具体宿舍:"南4栋702-4-3"},
+        {姓名:"梁梓豪",楼栋:"南4栋",宿舍号:"702-4",床位:"2",具体宿舍:"南4栋702-4-2"},
+        {姓名:"史彦平",楼栋:"南4栋",宿舍号:"702-4",床位:"1",具体宿舍:"南4栋702-4-1"},
+        {姓名:"索南拉旦",楼栋:"南4栋",宿舍号:"702-4",床位:"5",具体宿舍:"南4栋702-4-5"},
+        {姓名:"汪弘博",楼栋:"南4栋",宿舍号:"702-4",床位:"4",具体宿舍:"南4栋702-4-4"},
+        {姓名:"陈浩阳",楼栋:"南4栋",宿舍号:"801-3",床位:"5",具体宿舍:"南4栋801-3-5"},
+        {姓名:"邓治宏",楼栋:"南4栋",宿舍号:"801-4",床位:"3",具体宿舍:"南4栋801-4-3"},
+        {姓名:"胡弈凡",楼栋:"南4栋",宿舍号:"801-4",床位:"2",具体宿舍:"南4栋801-4-2"},
+        {姓名:"穆扎帕尔·买买提",楼栋:"南4栋",宿舍号:"801-4",床位:"5",具体宿舍:"南4栋801-4-5"},
+        {姓名:"武天杰",楼栋:"南4栋",宿舍号:"801-4",床位:"1",具体宿舍:"南4栋801-4-1"},
+        {姓名:"朱秦玮",楼栋:"南4栋",宿舍号:"801-4",床位:"4",具体宿舍:"南4栋801-4-4"},
+        {姓名:"陈卓",楼栋:"南4栋",宿舍号:"802-1",床位:"4",具体宿舍:"南4栋802-1-4"},
+        {姓名:"贺泰康",楼栋:"南4栋",宿舍号:"702-1",床位:"4",具体宿舍:"南4栋702-1-4"},
+        {姓名:"李时宇",楼栋:"南4栋",宿舍号:"802-1",床位:"5",具体宿舍:"南4栋802-1-5"},
+        {姓名:"史雨博",楼栋:"南4栋",宿舍号:"802-1",床位:"2",具体宿舍:"南4栋802-1-2"},
+        {姓名:"邓子轩",楼栋:"西7栋",宿舍号:"512",床位:"4",具体宿舍:"西7栋512-4"},
+        {姓名:"王英铭",楼栋:"南4栋",宿舍号:"802-1",床位:"1",具体宿舍:"南4栋802-1-1"},
+        {姓名:"陈诗韵",楼栋:"南3栋",宿舍号:"301-3",床位:"1",具体宿舍:"南3栋301-3-1"},
+        {姓名:"傅安欣",楼栋:"南3栋",宿舍号:"301-3",床位:"4",具体宿舍:"南3栋301-3-4"},
+        {姓名:"金柯语琦",楼栋:"南3栋",宿舍号:"301-3",床位:"2",具体宿舍:"南3栋301-3-2"},
+        {姓名:"向雨琪",楼栋:"南3栋",宿舍号:"301-3",床位:"5",具体宿舍:"南3栋301-3-5"},
+        {姓名:"杜怡乐",楼栋:"南3栋",宿舍号:"301-4",床位:"2",具体宿舍:"南3栋301-4-2"},
+        {姓名:"凤心宇",楼栋:"南3栋",宿舍号:"301-4",床位:"5",具体宿舍:"南3栋301-4-5"},
+        {姓名:"何艳秋",楼栋:"南3栋",宿舍号:"301-4",床位:"3",具体宿舍:"南3栋301-4-3"},
+        {姓名:"万冰洁",楼栋:"南3栋",宿舍号:"301-4",床位:"1",具体宿舍:"南3栋301-4-1"},
+        {姓名:"索南顿",楼栋:"南4栋",宿舍号:"702-3",床位:"5",具体宿舍:"南4栋702-3-5"},
+        {姓名:"杨晨",楼栋:"南4栋",宿舍号:"702-3",床位:"4",具体宿舍:"南4栋702-3-4"},
+        {姓名:"孙明宇",楼栋:"南4栋",宿舍号:"802-1",床位:"3",具体宿舍:"南4栋802-1-3"},
+        {姓名:"邓明",楼栋:"南4栋",宿舍号:"802-2",床位:"1",具体宿舍:"南4栋802-2-1"},
+        {姓名:"李佳隆",楼栋:"南4栋",宿舍号:"802-2",床位:"5",具体宿舍:"南4栋802-2-5"},
+        {姓名:"倪振洲",楼栋:"南4栋",宿舍号:"802-2",床位:"4",具体宿舍:"南4栋802-2-4"},
+        {姓名:"张源",楼栋:"南4栋",宿舍号:"802-2",床位:"2",具体宿舍:"南4栋802-2-2"},
+        {姓名:"朱辛帅",楼栋:"南4栋",宿舍号:"802-2",床位:"3",具体宿舍:"南4栋802-2-3"},
+        {姓名:"旦增木金",楼栋:"南4栋",宿舍号:"802-3",床位:"1",具体宿舍:"南4栋802-3-1"},
+        {姓名:"晋博豪",楼栋:"南4栋",宿舍号:"802-3",床位:"5",具体宿舍:"南4栋802-3-5"},
+        {姓名:"潘晨",楼栋:"南4栋",宿舍号:"802-3",床位:"4",具体宿舍:"南4栋802-3-4"},
+        {姓名:"秦浩然",楼栋:"南4栋",宿舍号:"802-3",床位:"2",具体宿舍:"南4栋802-3-2"},
+        {姓名:"吴亮维",楼栋:"南4栋",宿舍号:"802-3",床位:"3",具体宿舍:"南4栋802-3-3"},
+        {姓名:"吉庆彬",楼栋:"南4栋",宿舍号:"802-4",床位:"2",具体宿舍:"南4栋802-4-2"},
+        {姓名:"林子皓",楼栋:"南4栋",宿舍号:"802-4",床位:"4",具体宿舍:"南4栋802-4-4"},
+        {姓名:"韦俞合",楼栋:"南4栋",宿舍号:"802-4",床位:"3",具体宿舍:"南4栋802-4-3"},
+        {姓名:"张心豫",楼栋:"南4栋",宿舍号:"802-4",床位:"5",具体宿舍:"南4栋802-4-5"},
+        {姓名:"郑超",楼栋:"南4栋",宿舍号:"802-4",床位:"1",具体宿舍:"南4栋802-4-1"}
+    ];
+    const dormMap = new Map();
+    dormList.forEach(d => dormMap.set(d.姓名, { building: d.楼栋, dormRoom: d.宿舍号, bed: d.床位, fullDorm: d.具体宿舍 }));
+
+    // 合并完整学生数据
+    let studentsMaster = contactData.map(s => {
+        const dorm = dormMap.get(s.姓名) || { building: "未分配", dormRoom: "—", bed: "—", fullDorm: "未分配" };
+        return { ...s, building: dorm.building, dormRoom: dorm.dormRoom, bed: dorm.bed, fullDorm: dorm.fullDorm };
+    });
+
+    // 省份提取函数 (强化)
+    function extractProvince(hometown) {
+        if(!hometown) return '未知';
+        if(hometown.startsWith('北京')) return '北京'; if(hometown.startsWith('天津')) return '天津';
+        if(hometown.startsWith('上海')) return '上海'; if(hometown.startsWith('重庆')) return '重庆';
+        if(hometown.startsWith('广西')) return '广西'; if(hometown.startsWith('内蒙古')) return '内蒙古';
+        if(hometown.startsWith('新疆')) return '新疆'; if(hometown.startsWith('宁夏')) return '宁夏';
+        if(hometown.startsWith('西藏')) return '西藏';
+        const provs = ['河北','山西','辽宁','吉林','黑龙江','江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','海南','四川','贵州','云南','陕西','甘肃','青海','台湾'];
+        for(let p of provs) if(hometown.startsWith(p)) return p;
+        if(hometown.includes('阿克苏')) return '新疆';
+        return hometown.substring(0,2);
+    }
+
+    // 填充省份下拉
+    function populateProvinceSelect() {
+        const set = new Set(); studentsMaster.forEach(s => set.add(extractProvince(s.籍贯)));
+        const sorted = Array.from(set).sort((a,b)=>a.localeCompare(b));
+        const sel = document.getElementById('provinceFilter');
+        sel.innerHTML = '<option value="all">全部省份</option>' + sorted.map(p => `<option value="${p}">${p}</option>`).join('');
+    }
+
+    // DOM 元素
+    const tbody = document.getElementById('tableBody');
+    const searchInput = document.getElementById('searchInput');
+    const classFilter = document.getElementById('classFilter');
+    const genderFilter = document.getElementById('genderFilter');
+    const buildingFilter = document.getElementById('buildingFilter');
+    const provinceFilter = document.getElementById('provinceFilter');
+    const resetBtn = document.getElementById('resetBtn');
+    const resultInfo = document.getElementById('resultInfo');
+    const totalSpan = document.getElementById('totalCount');
+    const parentPhoneSpan = document.getElementById('parentPhoneCount');
+    const dormCoverSpan = document.getElementById('dormCoverage');
+    const classStatsSpan = document.getElementById('classStats');
+
+    let filteredData = [...studentsMaster];
+    let genderChart, provinceChart;
+
+    // 渲染表格
+    function renderTable() {
+        if(filteredData.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="12">✨ 没有匹配的学生，试试其他条件</td></tr>';
+            resultInfo.innerText = '0 条结果';
+            return;
+        }
+        let html = '';
+        filteredData.forEach((s, idx) => {
+            html += `<tr>
+                        <td>${idx+1}</td>
+                        <td><span class="badge-class">${escapeHtml(s.班级)}</span></td>
+                        <td>${escapeHtml(s.学号)}</td>
+                        <td><strong>${escapeHtml(s.姓名)}</strong></td>
+                        <td>${escapeHtml(s.性别)}</td>
+                        <td><a href="tel:${s.联系电话}" class="phone-link">${escapeHtml(s.联系电话)}</a></td>
+                        <td><a href="tel:${s.家长联系电话}" class="phone-link">${escapeHtml(s.家长联系电话)}</a></td>
+                        <td>${escapeHtml(s.籍贯)}</td>
+                        <td>${escapeHtml(s.building)}</td>
+                        <td>${escapeHtml(s.dormRoom)}</td>
+                        <td>${escapeHtml(s.bed)}</td>
+                        <td class="dorm-badge">${escapeHtml(s.fullDorm)}</td>
+                    </tr>`;
+        });
+        tbody.innerHTML = html;
+        resultInfo.innerText = `共 ${filteredData.length} 条记录`;
+    }
+
+    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+    function updateStats() {
+        totalSpan.innerText = studentsMaster.length;
+        const hasParent = studentsMaster.filter(s => s.家长联系电话 && s.家长联系电话.trim()).length;
+        parentPhoneSpan.innerText = hasParent;
+        const hasDorm = studentsMaster.filter(s => s.fullDorm !== '未分配').length;
+        dormCoverSpan.innerText = `${hasDorm}/${studentsMaster.length}`;
+        const c1 = studentsMaster.filter(s=>s.班级==='摄影2501').length;
+        const c2 = studentsMaster.filter(s=>s.班级==='摄影2502').length;
+        classStatsSpan.innerText = `2501:${c1} / 2502:${c2}`;
+    }
+
+    // 饼图更新 (基于当前筛选后的数据)
+    function updateCharts() {
+        const males = filteredData.filter(s => s.性别 === '男').length;
+        const females = filteredData.filter(s => s.性别 === '女').length;
+        if(genderChart) genderChart.destroy();
+        const ctxGen = document.getElementById('genderChart').getContext('2d');
+        genderChart = new Chart(ctxGen, {
+            type: 'pie',
+            data: { labels: ['男生', '女生'], datasets: [{ data: [males, females], backgroundColor: ['#3b82f6', '#ec489a'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // 省份分布 (按extractProvince)
+        const provCount = new Map();
+        filteredData.forEach(s => { const p = extractProvince(s.籍贯); provCount.set(p, (provCount.get(p)||0)+1); });
+        let entries = Array.from(provCount.entries()).sort((a,b)=>b[1]-a[1]);
+        let labels = [], data = [];
+        const otherSum = entries.slice(8).reduce((sum, item) => sum + item[1], 0);
+        const mainEntries = entries.slice(0,8);
+        mainEntries.forEach(([prov, cnt]) => { labels.push(prov); data.push(cnt); });
+        if(otherSum > 0) { labels.push('其他'); data.push(otherSum); }
+        if(provinceChart) provinceChart.destroy();
+        const ctxProv = document.getElementById('provinceChart').getContext('2d');
+        provinceChart = new Chart(ctxProv, {
+            type: 'pie',
+            data: { labels, datasets: [{ data, backgroundColor: '#2c7da0', borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+        });
+    }
+
+    // 应用所有筛选
+    function applyFilters() {
+        const keyword = searchInput.value.trim().toLowerCase();
+        const classVal = classFilter.value;
+        const genderVal = genderFilter.value;
+        const buildingVal = buildingFilter.value;
+        const provinceVal = provinceFilter.value;
+        filteredData = studentsMaster.filter(s => {
+            if(classVal !== 'all' && s.班级 !== classVal) return false;
+            if(genderVal !== 'all' && s.性别 !== genderVal) return false;
+            if(buildingVal !== 'all' && s.building !== buildingVal) return false;
+            if(provinceVal !== 'all' && extractProvince(s.籍贯) !== provinceVal) return false;
+            if(keyword !== '') {
+                const fields = [s.姓名, s.学号, s.联系电话, s.家长联系电话, s.籍贯, s.fullDorm, s.building];
+                const match = fields.some(f => f && f.toString().toLowerCase().includes(keyword));
+                if(!match) return false;
+            }
+            return true;
+        });
+        renderTable();
+        updateCharts();
+    }
+
+    function resetFilters() {
+        searchInput.value = '';
+        classFilter.value = 'all';
+        genderFilter.value = 'all';
+        buildingFilter.value = 'all';
+        provinceFilter.value = 'all';
+        applyFilters();
+    }
+
+    function init() {
+        populateProvinceSelect();
+        updateStats();
+        applyFilters();  // 初次渲染表格+饼图
+        searchInput.addEventListener('input', applyFilters);
+        classFilter.addEventListener('change', applyFilters);
+        genderFilter.addEventListener('change', applyFilters);
+        buildingFilter.addEventListener('change', applyFilters);
+        provinceFilter.addEventListener('change', applyFilters);
+        resetBtn.addEventListener('click', resetFilters);
+    }
+    init();
+</script>
+</body>
+</html>
