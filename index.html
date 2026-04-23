@@ -286,7 +286,8 @@
     <!-- 数据表格 -->
     <div class="table-wrapper">
         <table class="data-table">
-            <thead><tr><th>序号</th><th>班级</th><th>学号</th><th>姓名</th><th>性别</th><th>📱 学生电话</th><th>👪 家长电话</th><th>籍贯</th><th>楼栋</th><th>宿舍号</th><th>床位</th><th>具体宿舍</th></thead>
+            <thead><tr><th>序号</th><th>班级</th><th>学号</th><th>姓名</th><th>性别</th><th>📱 学生电话</th><th>👪 家长电话</th><th>籍贯</th><th>楼栋</th><th>宿舍号</th><th>床位</th><th>具体宿舍</th></tr>
+            </thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
@@ -508,9 +509,23 @@
         classStatsSpan.innerText = `2501:${c1} / 2502:${c2}`;
     }
 
-    // 更新所有图表（性别饼图、省份饼图、省份柱状图）
+    // 生成高对比色盘 (用于籍贯省份饼图，每个扇区不同颜色)
+    function getProvincePieColors(count) {
+        // 丰富、明亮的色盘，确保相邻省份区分度明显
+        const vibrantPalette = [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+            '#8AC24A', '#E67E22', '#E74C3C', '#1ABC9C', '#3498DB', '#9B59B6',
+            '#F1C40F', '#E67E22', '#2ECC71', '#E91E63', '#00BCD4', '#FF5722',
+            '#673AB7', '#3F51B5', '#009688', '#FFC107', '#795548', '#607D8B'
+        ];
+        if (count <= vibrantPalette.length) return vibrantPalette.slice(0, count);
+        // 如果超过预设长度，循环取色
+        return Array.from({ length: count }, (_, i) => vibrantPalette[i % vibrantPalette.length]);
+    }
+
+    // 更新所有图表（性别饼图、省份饼图——全新不同颜色、省份柱状图）
     function updateCharts() {
-        // 性别饼图
+        // 性别饼图 (原本就是不同色，保持)
         const males = filteredData.filter(s => s.性别 === '男').length;
         const females = filteredData.filter(s => s.性别 === '女').length;
         if(genderChart) genderChart.destroy();
@@ -521,7 +536,7 @@
             options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
         });
 
-        // 省份统计（全量省份，用于柱状图 + 饼图前8）
+        // 省份统计（全量省份，用于柱状图 + 饼图前8+其他）
         const provCount = new Map();
         filteredData.forEach(s => { const p = extractProvince(s.籍贯); provCount.set(p, (provCount.get(p)||0) + 1); });
         let entries = Array.from(provCount.entries()).sort((a,b)=>b[1]-a[1]);
@@ -532,15 +547,26 @@
         const mainEntries = entries.slice(0,8);
         mainEntries.forEach(([prov, cnt]) => { pieLabels.push(prov); pieData.push(cnt); });
         if(otherSum > 0) { pieLabels.push('其他'); pieData.push(otherSum); }
+        
+        // 为省份饼图生成动态不同颜色（每个扇区独立颜色）
+        const pieColors = getProvincePieColors(pieLabels.length);
+        
         if(provincePieChart) provincePieChart.destroy();
         const ctxPie = document.getElementById('provincePieChart').getContext('2d');
         provincePieChart = new Chart(ctxPie, {
             type: 'pie',
-            data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: '#2c7da0', borderWidth: 0 }] },
+            data: { 
+                labels: pieLabels, 
+                datasets: [{ 
+                    data: pieData, 
+                    backgroundColor: pieColors,
+                    borderWidth: 0 
+                }] 
+            },
             options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
         });
 
-        // 柱状图：所有省份（按人数降序）
+        // 柱状图：所有省份（按人数降序）颜色不变保持统一蓝色系
         const barLabels = entries.map(e => e[0]);
         const barData = entries.map(e => e[1]);
         if(provinceBarChart) provinceBarChart.destroy();
@@ -598,7 +624,7 @@
         populateProvinceSelect();
         populateRoomSelect();
         updateStats();
-        applyFilters();  // 初次渲染表格+所有图表
+        applyFilters();  // 初次渲染表格+所有图表（包含全新不同颜色的省份饼图）
         searchInput.addEventListener('input', applyFilters);
         classFilter.addEventListener('change', applyFilters);
         genderFilter.addEventListener('change', applyFilters);
